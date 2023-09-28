@@ -1,0 +1,6 @@
+python-telegram-bot==13.7
+requests==2.31.0
+emoji==2.6.0
+pysqlite3==0.5.2 
+
+
