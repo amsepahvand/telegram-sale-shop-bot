@@ -1,0 +1,14 @@
+version: '3'
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bot_image  
+    volumes:
+      - ./bot_data:/bot_data
+      - ./botdb.db:/app/botdb.db
+    environment:
+      DATA_DIR: /bot_data
+    container_name: sale-bot
+    restart: always
