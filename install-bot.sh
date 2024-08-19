@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Update package lists and install git
+sudo apt-get install figlet
+figlet TAM-Bots
 sudo apt-get update
 sudo apt-get install -y git curl
 
