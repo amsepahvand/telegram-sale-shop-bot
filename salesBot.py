@@ -13,7 +13,7 @@ MAIN_MENU, CATEGORY_MENU, ADMIN_MENU = range(3)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_TOKEN = '6540898207:AAF9aFTZSvPzb661yqGtlxAWKXrHo0BKwhE'
+API_TOKEN = 
 bot = telegram.Bot(token=API_TOKEN)
 
 
