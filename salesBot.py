@@ -1,5 +1,5 @@
 
-#test-API_TOKEN = '6540898207:AAF9aFTZSvPzb661yqGtlxAWKXrHo0BKwhE'
+#staging-api-key = 
 
 
 import sqlite3 , emoji ,time , telegram , logging
