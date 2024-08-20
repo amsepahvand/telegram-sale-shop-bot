@@ -13,7 +13,13 @@ MAIN_MENU, CATEGORY_MENU, ADMIN_MENU = range(3)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_TOKEN = 
+con = sqlite3.connect("botdb.db")
+cur = con.cursor()
+cur.execute("SELECT api_key FROM bot_api_token where id =1")
+result = cur.fetchone()
+API_TOKEN = f'{result[0]}' 
+con.close()
+
 bot = telegram.Bot(token=API_TOKEN)
 
 
