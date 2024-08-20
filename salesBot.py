@@ -68,6 +68,121 @@ def button(update, context):
         subcategories_buttons(query)
     elif query.data == "main_menu":
         start(update, context)
+    elif query.data == "new_post":
+        new_post(query)
+    elif query.data == "admins_list":
+        admins_list(query)
+    elif query.data == "add_new_admin":
+        add_new_admin(query , update)
+    elif query.data == "add_new_admin_userid":
+        add_new_admin_userid(query , update)
+
+
+
+        
+
+
+def add_new_admin(query, update):
+    user_id = get_user_id(update)
+    update_user_state(user_id, 'add_new_admin_username', 'None')
+    buttons = [
+        [InlineKeyboardButton("منصرف شدم", callback_data="admin_list")],
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text='لطفا اسم ادمین جدید رو  وارد کنید ', reply_markup=reply_markup)
+
+
+def add_new_admin_userid(query ,update):
+    user_id = get_user_id(update)
+    state , admin_username = get_state_and_text(user_id)
+    con =  sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute(f"INSERT INTO admins_id  username =  {admin_username}")
+    con.commit()
+    con.close()
+    update_user_state(user_id, 'add_new_admin_userid', 'None')
+    buttons = [
+        [InlineKeyboardButton("منصرف شدم", callback_data="admins_list")],
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text='اطلاعات ادمین جدید با موفقیت ثبت شد', reply_markup=reply_markup)
+    add_new_admin_userid_to_db(query , update)
+
+def add_new_admin_userid_to_db(query , update):
+    user_id = get_user_id(update)
+    state , admin_userid = get_state_and_text(user_id)
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute(f"UPDATE admins_id SET user_id = {admin_userid} WHERE username IS NULL")
+    con.commit()
+    con.close()
+    update_user_state(user_id, 'None', 'None')
+    admins_list(query)
+
+def cancel_add_new_admin(query):
+    user_id = get_user_id(update)
+    update_user_state(user_id, 'None', 'None')
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("DELETE FROM admins_id WHERE username IS NULL OR user_id IS NULL")
+    con.commit()
+    con.close()
+    admins_list(query)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def admins_list(query):
+
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT username , user_id FROM admins_id ")
+    records = cur.fetchall()
+    con.close() 
+    buttons = []
+
+    buttons.append([
+            InlineKeyboardButton("Admin Name", callback_data="no_action"),
+            InlineKeyboardButton("User ID", callback_data="no_action")
+        ])
+        
+    for username, user_id in records:
+        row = [
+            InlineKeyboardButton(f"{username}", callback_data="no_action"),
+            InlineKeyboardButton(f"{user_id}", callback_data="no_action")
+        ]
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("اضافه کردن ادمین جدید", callback_data="add_new_admin")])
+    buttons.append([InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")])
+
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text="لیست ادمین ها:", reply_markup=reply_markup)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -130,6 +245,7 @@ def categories(query):
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text="لیست دسته بندی محصولات:", reply_markup=reply_markup)
 
+
 def admin_categories(query):
     buttons = [
         [InlineKeyboardButton("نمایش همه دسته بندی ها", callback_data="show_all_categories")],
@@ -138,6 +254,16 @@ def admin_categories(query):
     ]
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text='لطفا انتخاب کنید', reply_markup=reply_markup)
+
+def new_post(query):
+    buttons = [
+            [InlineKeyboardButton("ساخت پست جدید", callback_data="creat_post"),
+            InlineKeyboardButton("ویرایش پست ها", callback_data="edit_existing_post")],
+            [InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")],
+        ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text='پست جدید', reply_markup=reply_markup)
+
 
 def show_all_categories(query):
     con = sqlite3.connect("botdb.db")
@@ -195,37 +321,6 @@ def category_turn_status(query, category_id, status):
         conn.commit()
     conn.close()
     show_all_categories(query)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def update_user_state(user_id, state, text):
@@ -288,7 +383,7 @@ def is_user_admin(user_id):
     return result is not None
 
 
-def start(update, context):
+def start(update: Update, context: CallbackContext):
     query = None
     if update.callback_query:
         query = update.callback_query
@@ -300,7 +395,7 @@ def start(update, context):
         buttons.append([InlineKeyboardButton("پنل ادمین", callback_data="admin_panel")])
 
     reply_markup = InlineKeyboardMarkup(buttons)
-    if query :
+    if query:
         query.edit_message_text(text='لطفا انتخاب کنید', reply_markup=reply_markup)
     else:
         context.bot.send_message(chat_id=user_id, text='لطفا انتخاب کنید', reply_markup=reply_markup)
@@ -312,11 +407,19 @@ def start(update, context):
 
 
 def handle_text(update, context):
+    query = update.callback_query
     message_text = update.message.text
+    print("hoooooooooooooooooooooooooooooooooooooooooooooooooo               ", message_text)
     user_id = get_user_id(update)
     state , text = get_state_and_text(user_id)
     if state == 'add_new_category':
         update_user_state(user_id, 'add_new_category', message_text)
+    elif state == 'add_new_admin_username':
+        update_user_state(user_id, 'add_new_admin_username', message_text) 
+        add_new_admin_userid(query ,update)
+
+    elif state == 'add_new_admin_userid':
+        update_user_state(user_id, 'add_new_admin_userid', message_text)
 
 
 
