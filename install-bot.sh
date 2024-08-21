@@ -47,9 +47,15 @@ fi
 cd telegram-sale-shop-bot
 
 read -p "Please enter your Telegram Bot API token: " BOT_API_TOKEN
+read -p "Please enter the shop name: " SHOP_NAME
+read -p "Please enter the admin username: " ADMIN_USERNAME
+read -p "Please enter the admin Telegram user ID: " ADMIN_USER_ID
 
-sqlite3 botdb.db "UPDATE bot_api_token SET api_key = '$BOT_API_TOKEN' WHERE id = 1;"
+sqlite3 botdb.db "INSERT INTO bot_api_token (id, api_key) VALUES (1, '$BOT_API_TOKEN');"
+sqlite3 botdb.db "INSERT INTO shop_info (shop_name, support_username, phone_number) VALUES ('$SHOP_NAME', '', '');"
+sqlite3 botdb.db "INSERT INTO admins_id (username, user_id) VALUES ('$ADMIN_USERNAME', '$ADMIN_USER_ID');"
 
 sudo docker compose up -d
 
 echo "Installation complete! The bot is now running. Enjoy it ;)"
+
