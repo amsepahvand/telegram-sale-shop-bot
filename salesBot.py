@@ -356,7 +356,7 @@ def admin_panel_buttons(query):
             InlineKeyboardButton("ویرایش و حذف", callback_data="edit_post_or_delete")],
             [InlineKeyboardButton(" دسته بندی ها ", callback_data="admin_categories"),
             InlineKeyboardButton(" دسته بندی های جانبی", callback_data="sub_categories")],
-            [InlineKeyboardButton("لیست ادمین ها", callback_data="admins_list")],
+            [InlineKeyboardButton(f"لیست ادمین ها  {emoji.emojize('🧑‍💼')}", callback_data="admins_list")],
             [InlineKeyboardButton(" پیام همگانی ", callback_data="all_user_message")],
             [InlineKeyboardButton(f"مشخصات فروشگاه{emoji.emojize('🛠')}", callback_data="shop_info")],
             [InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")],
