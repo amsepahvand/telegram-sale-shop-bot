@@ -1,7 +1,3 @@
-
-#staging-api-key = 
-
-
 import sqlite3 , emoji ,time , telegram , logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler , CallbackContext
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup , Bot , Update
@@ -48,6 +44,7 @@ def button(update, context):
 
 
     if query.data == "admin_panel":
+        update_user_state(user_id, 'admin_panel', 'None')
         admin_panel_buttons(query)
     elif query.data == "categories":
         categories(query)
@@ -74,52 +71,191 @@ def button(update, context):
         admins_list(query)
     elif query.data == "add_new_admin":
         add_new_admin(query , update)
-    elif query.data == "add_new_admin_userid":
-        add_new_admin_userid(query , update)
-
+    elif query.data == "cancel_add_new_admin":
+        cancel_add_new_admin(query)
+        admins_list(query)
+    elif query.data == "delete_admin":
+        delete_admin(query , update)
+    elif query.data.startswith('delete_admin_'):
+        confirm_delete(query , update)
+    elif query.data == "shop_info":
+        shop_info(query)
+    elif query.data == "change_shop_info":
+        change_shop_info(query)
+    elif query.data == "change_shop_name":
+        change_shop_name(query)
+    elif query.data == "change_support_account":
+        change_support_account(query)
+    elif query.data == "change_phone_number":
+        change_phone_number(query)
+    elif query.data in ["remove_support_account","remove_phone_number"]:
+        remove_shop_info(query)
 
 
         
+def shop_info(query):
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT shop_name, support_username, phone_number FROM shop_info")
+    records = cur.fetchall()
+    con.close()
+
+    buttons = []
+    for shop_name, support_username, phone_number in records:
+        row = [
+            InlineKeyboardButton(f"نام فروشگاه", callback_data="no_action"),
+            InlineKeyboardButton(f"{shop_name if shop_name else 'ثبت نشده'}", callback_data="no_action")
+        ]
+        buttons.append(row)
+        row = [
+            InlineKeyboardButton(f"اکانت پشتیبانی", callback_data="no_action"),
+            InlineKeyboardButton(f"{support_username if support_username else 'ثبت نشده'}", callback_data="no_action")
+        ]
+        buttons.append(row)
+        row = [
+            InlineKeyboardButton(f"شماره تلفن", callback_data="no_action"),
+            InlineKeyboardButton(f"{phone_number if phone_number else 'ثبت نشده'}", callback_data="no_action")
+        ]
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("تغییر مشخصات فروشگاه", callback_data="change_shop_info")])
+    buttons.append([InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_panel")])
+
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text="اینجا میتونی مشخصات فروشگاهت رو ثبت کنی یا تغییر بدی", reply_markup=reply_markup)
+
+def remove_shop_info(query):
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    if query.data == 'remove_support_account':
+        cur.execute("UPDATE shop_info SET support_username = NULL")
+        con.commit()
+    elif query.data == 'remove_phone_number':
+        cur.execute("UPDATE shop_info SET phone_number = NULL")
+        con.commit()
+    con.close()
+    shop_info(query)
 
 
+def change_shop_info(query):
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT shop_name, support_username, phone_number FROM shop_info")
+    records = cur.fetchall()
+    con.close()
+
+    buttons = []
+    for shop_name, support_username, phone_number in records:
+        row = [
+            InlineKeyboardButton(f"نام فروشگاه", callback_data="no_action"),
+            InlineKeyboardButton(f"{shop_name if shop_name else 'ثبت نشده'}{emoji.emojize('✏')} ", callback_data="change_shop_name"),
+            InlineKeyboardButton(f"نمیتواند خالی باشد", callback_data="no_action")
+        ]
+        buttons.append(row)
+        row = [
+            InlineKeyboardButton(f"اکانت پشتیبانی", callback_data="no_action"),
+            InlineKeyboardButton(f"{support_username if support_username else 'ثبت نشده'} {emoji.emojize('✏')}", callback_data="change_support_account"),
+            InlineKeyboardButton(f"{emoji.emojize('❌')}", callback_data="remove_support_account")
+        ]
+        buttons.append(row)
+        row = [
+            InlineKeyboardButton(f"شماره تلفن", callback_data="no_action"),
+            InlineKeyboardButton(f"{phone_number if phone_number else 'ثبت نشده'} {emoji.emojize('✏')}", callback_data="change_phone_number"),
+            InlineKeyboardButton(f"{emoji.emojize('❌')}", callback_data="remove_phone_number")
+        ]
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_panel")])
+
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text="روی علامت قلم هرکدوم بزنی میتونی تغییرش بدی و اگه روی ضربدر بزنی میتونی کلا پاکش کنی", reply_markup=reply_markup)
+
+
+def change_shop_name(query):
+    query.edit_message_text(text="لطفا نام فروشگاه رو وارد کنید")
+    update_user_state(get_user_id(query), 'change_shop_name', 'None')
+def change_support_account(query):
+    query.edit_message_text(text=" @username لطفا یوزرنیم اکانت پشتیبانی رو با @ وارد کنید بعنوان مثال ")
+    update_user_state(get_user_id(query), 'change_support_account', 'None')
+def change_phone_number(query):
+    query.edit_message_text(text="لطفا شماره تلفن رو وارد کنید")
+    update_user_state(get_user_id(query), 'change_phone_number', 'None')
+
+
+def confirm_shop_changes(update, query, context):
+    user_id = get_user_id(update)
+    state, change = get_state_and_text(user_id)
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    if state == 'change_shop_name':
+        cur.execute("UPDATE shop_info SET shop_name = ?", (change,))
+        con.commit()
+    elif state == 'change_support_account':
+        cur.execute("UPDATE shop_info SET support_username = ?" , (change,))
+        con.commit()
+    elif state == 'change_phone_number':
+        cur.execute("UPDATE shop_info SET phone_number = ?", (change,))
+        con.commit()
+    con.commit()
+    con.close()
+    buttons = [
+        [InlineKeyboardButton("بازگشت به مشخصات فروشگاه", callback_data="shop_info")],
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    update_user_state(user_id , "shop_info","None")
+    if query is not None:
+        query.edit_message_text(text='تغییرات با موفقیت اعمال شد', reply_markup=reply_markup)
+    else:
+        context.bot.send_message(chat_id=user_id, text='تغییرات با موفقیت اعمال شد', reply_markup=reply_markup)
+
+    
 def add_new_admin(query, update):
     user_id = get_user_id(update)
     update_user_state(user_id, 'add_new_admin_username', 'None')
     buttons = [
-        [InlineKeyboardButton("منصرف شدم", callback_data="admin_list")],
+        [InlineKeyboardButton("منصرف شدم", callback_data="admins_list")],
     ]
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text='لطفا اسم ادمین جدید رو  وارد کنید ', reply_markup=reply_markup)
 
 
-def add_new_admin_userid(query ,update):
+def add_new_admin_username(query, update , context):
     user_id = get_user_id(update)
-    state , admin_username = get_state_and_text(user_id)
-    con =  sqlite3.connect("botdb.db")
+    state, admin_username = get_state_and_text(user_id)
+    con = sqlite3.connect("botdb.db")
     cur = con.cursor()
-    cur.execute(f"INSERT INTO admins_id  username =  {admin_username}")
+    cur.execute("INSERT INTO admins_id (username) VALUES (?)", (admin_username,))
     con.commit()
     con.close()
-    update_user_state(user_id, 'add_new_admin_userid', 'None')
+    update_user_state(user_id, 'add_new_admin_userid', "None")
     buttons = [
-        [InlineKeyboardButton("منصرف شدم", callback_data="admins_list")],
+        [InlineKeyboardButton("منصرف شدم", callback_data="cancel_add_new_admin")],
     ]
     reply_markup = InlineKeyboardMarkup(buttons)
-    query.edit_message_text(text='اطلاعات ادمین جدید با موفقیت ثبت شد', reply_markup=reply_markup)
-    add_new_admin_userid_to_db(query , update)
+    if query is not None:
+        query.edit_message_text(text='لطفا ایدی ادمین جدید رو  وارد کنید ', reply_markup=reply_markup)
+    else:
+        context.bot.send_message(chat_id=user_id, text='لطفا ایدی ادمین جدید رو  وارد کنید ', reply_markup=reply_markup)
 
-def add_new_admin_userid_to_db(query , update):
+
+
+def add_new_admin_userid(query ,update , context):
     user_id = get_user_id(update)
     state , admin_userid = get_state_and_text(user_id)
     con = sqlite3.connect("botdb.db")
     cur = con.cursor()
-    cur.execute(f"UPDATE admins_id SET user_id = {admin_userid} WHERE username IS NULL")
+    cur.execute(f"UPDATE admins_id SET user_id = '{admin_userid}' WHERE user_id IS NULL")
     con.commit()
     con.close()
     update_user_state(user_id, 'None', 'None')
-    admins_list(query)
+    buttons = [
+        [InlineKeyboardButton("بازگشت به لیست ادمین ها", callback_data="admins_list")],
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    if query is not None:
+        query.edit_message_text(text='اطلاعات ادمین جدید با موفقیت ثبت شد', reply_markup=reply_markup)
+    else:
+        context.bot.send_message(chat_id=user_id, text='اطلاعات ادمین جدید با موفقیت ثبت شد', reply_markup=reply_markup)
 
-def cancel_add_new_admin(query):
+def cancel_add_new_admin(query, update):
     user_id = get_user_id(update)
     update_user_state(user_id, 'None', 'None')
     con = sqlite3.connect("botdb.db")
@@ -129,19 +265,37 @@ def cancel_add_new_admin(query):
     con.close()
     admins_list(query)
 
+def delete_admin(query , update):
+    user_id = get_user_id(query)
+    update_user_state(user_id, 'delete_admin_username', 'None')
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT username , user_id FROM admins_id")
+    records = cur.fetchall()
+    con.close()
+    buttons = []
+    for username, user_id in records:
+        row = [
+            InlineKeyboardButton(f"{username} {emoji.emojize('❌')}", callback_data=f"delete_admin_{user_id}"),
+            InlineKeyboardButton(f"{user_id}", callback_data="no_action")
+        ]
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("منصرف شدم", callback_data="admins_list")])
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text='لطفا ادمینی که میخوای حذف کنی رو انتخاب کن', reply_markup=reply_markup)
 
-
-
-
-
-
-
-
-
-
-
-
-
+def confirm_delete(query, update):
+    user_id = get_user_id(update)
+    admin_userid = query.data.split('_')[2]
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("DELETE FROM admins_id WHERE user_id=?", (admin_userid,))
+    con.commit()
+    con.close()
+    buttons = []
+    buttons.append([InlineKeyboardButton("بازگشت به لیست ادمین ها", callback_data="admins_list")])
+    reply_markup = InlineKeyboardMarkup(buttons)
+    query.edit_message_text(text="ادمین با موفقیت حذف شد" , reply_markup=reply_markup)
 
 def admins_list(query):
 
@@ -164,28 +318,11 @@ def admins_list(query):
         ]
         buttons.append(row)
     buttons.append([InlineKeyboardButton("اضافه کردن ادمین جدید", callback_data="add_new_admin")])
-    buttons.append([InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")])
+    buttons.append([InlineKeyboardButton("حذف ادمین", callback_data="delete_admin")])
+    buttons.append([InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_panel")])
 
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text="لیست ادمین ها:", reply_markup=reply_markup)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 def  show_all_subcategory_parent(query):
     con = sqlite3.connect("botdb.db")
@@ -221,10 +358,11 @@ def admin_panel_buttons(query):
             InlineKeyboardButton(" دسته بندی های جانبی", callback_data="sub_categories")],
             [InlineKeyboardButton("لیست ادمین ها", callback_data="admins_list")],
             [InlineKeyboardButton(" پیام همگانی ", callback_data="all_user_message")],
+            [InlineKeyboardButton(f"مشخصات فروشگاه{emoji.emojize('🛠')}", callback_data="shop_info")],
             [InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")],
         ]
     reply_markup = InlineKeyboardMarkup(buttons)
-    query.edit_message_text(text='پنل ادمین', reply_markup=reply_markup)
+    query.edit_message_text(text='پنل مدیریت', reply_markup=reply_markup)
 
 
 def categories(query):
@@ -241,7 +379,7 @@ def categories(query):
             InlineKeyboardButton(f"{name}", callback_data=f"{category_id}_{name}"),
         ]
         buttons.append(row)
-    buttons.append([InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")])
+    buttons.append([InlineKeyboardButton("بازگشت به پنل مدیریت ", callback_data="admin_panel")])
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text="لیست دسته بندی محصولات:", reply_markup=reply_markup)
 
@@ -250,7 +388,7 @@ def admin_categories(query):
     buttons = [
         [InlineKeyboardButton("نمایش همه دسته بندی ها", callback_data="show_all_categories")],
         [InlineKeyboardButton("اضافه کردن دسته بندی", callback_data="add_category")],
-        [InlineKeyboardButton("بازگشت به پنل ادمین", callback_data="admin_panel")],
+        [InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_panel")],
     ]
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text='لطفا انتخاب کنید', reply_markup=reply_markup)
@@ -259,7 +397,7 @@ def new_post(query):
     buttons = [
             [InlineKeyboardButton("ساخت پست جدید", callback_data="creat_post"),
             InlineKeyboardButton("ویرایش پست ها", callback_data="edit_existing_post")],
-            [InlineKeyboardButton("بازگشت به منوی اصلی", callback_data="main_menu")],
+            [InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_panel")],
         ]
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text='پست جدید', reply_markup=reply_markup)
@@ -284,7 +422,7 @@ def show_all_categories(query):
             InlineKeyboardButton(f"وضعیت : {status}", callback_data=f"turn_category_{category_id}_{turn_status}")
         ]
         buttons.append(row)
-    buttons.append([InlineKeyboardButton("بازگشت به پنل ادمین", callback_data="admin_categories")])
+    buttons.append([InlineKeyboardButton("بازگشت به پنل مدیریت", callback_data="admin_categories")])
     reply_markup = InlineKeyboardMarkup(buttons)
     query.edit_message_text(text="برای تغییر وضعیت روی دکمه ON/OFF وضعیت کلیک کنید", reply_markup=reply_markup)
 
@@ -385,45 +523,64 @@ def is_user_admin(user_id):
 
 def start(update: Update, context: CallbackContext):
     query = None
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM shop_info")
+    shop_name, support_id, shop_phone = cur.fetchone()
+    con.close()
+
     if update.callback_query:
         query = update.callback_query
     user_id = update.effective_user.id
+
+    con = sqlite3.connect("botdb.db")
+    cur = con.cursor()
+    cur.execute("SELECT * FROM started_bot WHERE user_id = ?", (user_id,))
+    if not cur.fetchone():
+        cur.execute("INSERT INTO started_bot (user_id) VALUES (?)", (user_id,))
+        con.commit()
+    con.close()
+
     buttons = [
-        [InlineKeyboardButton("دسته بندی ها", callback_data="categories")],
+        [InlineKeyboardButton(f"دسته بندی ها{emoji.emojize('🛒')}", callback_data="categories")],
     ]
     if is_user_admin(user_id):
-        buttons.append([InlineKeyboardButton("پنل ادمین", callback_data="admin_panel")])
+        buttons.append([InlineKeyboardButton(f"پنل مدیریت{emoji.emojize('⚙')}" , callback_data="admin_panel")])
 
     reply_markup = InlineKeyboardMarkup(buttons)
-    if query:
-        query.edit_message_text(text='لطفا انتخاب کنید', reply_markup=reply_markup)
+
+    if support_id and shop_phone:
+        message = f"سلام\nبه فروشگاه: <b>{shop_name}</b> خوش اومدین\n\nراه های ارتباطی ما:\nشماره تماس: {shop_phone}\nاکانت پشتیبانی: {support_id}\n\nبرای دیدن لیست دسته بندی ها بر روی دکمه پایین کلیک کنید\n"
+    elif shop_phone:
+        message = f"سلام\nبه فروشگاه: <b>{shop_name}</b> خوش اومدین\n\nراه های ارتباطی ما:\nشماره تماس: {shop_phone}\n\nبرای دیدن لیست دسته بندی ها بر روی دکمه پایین کلیک کنید\n"
+    elif support_id:
+        message = f"سلام\nبه فروشگاه: <b>{shop_name}</b> خوش اومدین\n\nراه های ارتباطی ما:\nاکانت پشتیبانی: {support_id}\n\nبرای دیدن لیست دسته بندی ها بر روی دکمه پایین کلیک کنید\n"
     else:
-        context.bot.send_message(chat_id=user_id, text='لطفا انتخاب کنید', reply_markup=reply_markup)
+        message = f"سلام\nبه فروشگاه: <b>{shop_name}</b> خوش اومدین"
+
+    if query:
+        query.edit_message_text(text=message, parse_mode="HTML", reply_markup=reply_markup)
+    else:
+        context.bot.send_message(chat_id=user_id, text=message, parse_mode="HTML", reply_markup=reply_markup)
+
     logger.info(f"User {user_id} started the bot.")
-
-
-
-
-
 
 def handle_text(update, context):
     query = update.callback_query
     message_text = update.message.text
-    print("hoooooooooooooooooooooooooooooooooooooooooooooooooo               ", message_text)
     user_id = get_user_id(update)
     state , text = get_state_and_text(user_id)
     if state == 'add_new_category':
         update_user_state(user_id, 'add_new_category', message_text)
     elif state == 'add_new_admin_username':
         update_user_state(user_id, 'add_new_admin_username', message_text) 
-        add_new_admin_userid(query ,update)
-
+        add_new_admin_username(query , update ,context)
     elif state == 'add_new_admin_userid':
         update_user_state(user_id, 'add_new_admin_userid', message_text)
-
-
-
-
+        add_new_admin_userid(query , update, context)
+    elif state in ['change_shop_name', 'change_phone_number', 'change_support_account']:
+        update_user_state(user_id, state, message_text)
+        confirm_shop_changes(update, query, context)
 
 def main():
     updater = Updater(token=API_TOKEN, use_context=True)
